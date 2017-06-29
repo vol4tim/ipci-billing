@@ -35,7 +35,7 @@ utils.db.open(utils.sqlite3_file, { Promise })
         .then((contracts) => {
           addrContracts = contracts;
           const promises = [];
-          _.forEach(addrContracts, (address) => {
+          _.forEach(addrContracts, (type, address) => {
             promises.push(utils.db.get("SELECT * FROM last WHERE address=?", [address]))
           });
           return Promise.all(promises);
@@ -47,7 +47,7 @@ utils.db.open(utils.sqlite3_file, { Promise })
             if (row) {
               lastBlock = row.num;
             }
-            promises.push(utils.getTransactions(addrContracts[i], lastBlock))
+            promises.push(utils.getTransactions(addrContracts[row.address], row.address, lastBlock))
           });
           return Promise.all(promises);
         })

@@ -14,7 +14,6 @@ const CHAINID = process.env.CHAINID || 1;
 const GAS_PRICE = process.env.GAS_PRICE || 20000000000;
 const GAS_LIMIT = process.env.GAS_LIMIT || 35000;
 const PARITY = process.env.PARITY || 'https://mainnet.infura.io/metamask'
-const COMMISSION = process.env.COMMISSION || 0.01
 
 export const db = require('sqlite');
 export const sqlite3_file=__dirname+'/data/db.sqlite3';
@@ -32,7 +31,7 @@ export const getContracts = () => {
     while (address !== '0x0000000000000000000000000000000000000000') {
       const type = contract.abiOf(address);
       if (type !== '' && type !== 'agents') {
-        addrContracts.push(address)
+        addrContracts.push({ address: type })
       }
       address = contract.next(address);
     }
@@ -47,15 +46,19 @@ export const getBlock = () => {
     })
 }
 
-export const getTransactions = (address, startblock = 0, endblock = 'latest') => {
+export const getTransactions = (type, address, startblock = 0, endblock = 'latest') => {
   return axios.get('https://api.etherscan.io/api?module=account&action=txlist&address=' + address + '&startblock=' + startblock + '&endblock=' + endblock + '&sort=asc&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS')
     .then((result) => {
       let last = startblock;
       const balances = {};
       _.forEach(result.data.result, (tx) => {
         let commission = 0;
-        if (tx.input.substring(0,10) === '0xa9059cbb') {
-          commission = Number(COMMISSION)
+        if ((type === 'tokenAcl' || type === 'token-acl') && tx.input.substring(0,10) === '0xa9059cbb') { // transfer
+          const amount = parseInt(tx.input.substring(74,138), 16)
+          commission = Number(amount * 0.04 / 100)
+        } else if ((type === 'tokenAcl' || type === 'token-acl') && tx.input.substring(0,10) === '0x58292a3d') { // emission
+          const amount = parseInt(tx.input.substring(10,74), 16)
+          commission = Number(amount * 0.02 / 100)
         }
         if (commission > 0) {
           if (!_.has(balances, tx.from)) {

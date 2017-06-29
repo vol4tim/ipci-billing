@@ -40,7 +40,6 @@ var CHAINID = process.env.CHAINID || 1;
 var GAS_PRICE = process.env.GAS_PRICE || 20000000000;
 var GAS_LIMIT = process.env.GAS_LIMIT || 35000;
 var PARITY = process.env.PARITY || 'https://mainnet.infura.io/metamask';
-var COMMISSION = process.env.COMMISSION || 0.01;
 
 var db = exports.db = require('sqlite');
 var sqlite3_file = exports.sqlite3_file = __dirname + '/data/db.sqlite3';
@@ -58,7 +57,7 @@ var getContracts = exports.getContracts = function getContracts() {
     while (address !== '0x0000000000000000000000000000000000000000') {
       var type = contract.abiOf(address);
       if (type !== '' && type !== 'agents') {
-        addrContracts.push(address);
+        addrContracts.push({ address: type });
       }
       address = contract.next(address);
     }
@@ -72,17 +71,23 @@ var getBlock = exports.getBlock = function getBlock() {
   });
 };
 
-var getTransactions = exports.getTransactions = function getTransactions(address) {
-  var startblock = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
-  var endblock = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 'latest';
+var getTransactions = exports.getTransactions = function getTransactions(type, address) {
+  var startblock = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+  var endblock = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'latest';
 
   return _axios2.default.get('https://api.etherscan.io/api?module=account&action=txlist&address=' + address + '&startblock=' + startblock + '&endblock=' + endblock + '&sort=asc&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS').then(function (result) {
     var last = startblock;
     var balances = {};
     _lodash2.default.forEach(result.data.result, function (tx) {
       var commission = 0;
-      if (tx.input.substring(0, 10) === '0xa9059cbb') {
-        commission = Number(COMMISSION);
+      if ((type === 'tokenAcl' || type === 'token-acl') && tx.input.substring(0, 10) === '0xa9059cbb') {
+        // transfer
+        var amount = parseInt(tx.input.substring(74, 138), 16);
+        commission = Number(amount * 0.04 / 100);
+      } else if ((type === 'tokenAcl' || type === 'token-acl') && tx.input.substring(0, 10) === '0x58292a3d') {
+        // emission
+        var _amount = parseInt(tx.input.substring(10, 74), 16);
+        commission = Number(_amount * 0.02 / 100);
       }
       if (commission > 0) {
         if (!_lodash2.default.has(balances, tx.from)) {
