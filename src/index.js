@@ -41,13 +41,15 @@ utils.db.open(utils.sqlite3_file, { Promise })
           return Promise.all(promises);
         })
         .then((rows) => {
+          const addrs = _.keys(addrContracts);
+          const types = _.values(addrContracts);
           const promises = [];
           _.forEach(rows, (row, i) => {
             let lastBlock = LASTBLOCK;
             if (row) {
               lastBlock = row.num;
             }
-            promises.push(utils.getTransactions(addrContracts[row.address], row.address, lastBlock))
+            promises.push(utils.getTransactions(types[i], addrs[i], lastBlock))
           });
           return Promise.all(promises);
         })

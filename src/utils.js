@@ -14,6 +14,7 @@ const CHAINID = process.env.CHAINID || 1;
 const GAS_PRICE = process.env.GAS_PRICE || 20000000000;
 const GAS_LIMIT = process.env.GAS_LIMIT || 35000;
 const PARITY = process.env.PARITY || 'https://mainnet.infura.io/metamask'
+const API_ETHERSCAN = process.env.API_ETHERSCAN || 'https://api.etherscan.io/'
 
 export const db = require('sqlite');
 export const sqlite3_file=__dirname+'/data/db.sqlite3';
@@ -23,15 +24,15 @@ web3.setProvider(new web3.providers.HttpProvider(PARITY));
 
 export const getContracts = () => {
   return new Promise((resolve) => {
-    const addrContracts = [];
+    const addrContracts = {};
     // addrContracts.push('0x51b52d3a8eb9c2dad5b08ee66c2faa0ab38ad097')
     // addrContracts.push('0x259e4b009a1611f47231975bf9f5a585c70fe591')
     const contract = web3.eth.contract(abi.Core).at(CORE)
     let address = contract.first();
     while (address !== '0x0000000000000000000000000000000000000000') {
       const type = contract.abiOf(address);
-      if (type !== '' && type !== 'agents') {
-        addrContracts.push({ address: type })
+      if (type === 'tokenAcl' || type === 'token-acl') {
+        addrContracts[address] = type;
       }
       address = contract.next(address);
     }
@@ -40,14 +41,14 @@ export const getContracts = () => {
 }
 
 export const getBlock = () => {
-  return axios.get('https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS')
+  return axios.get(API_ETHERSCAN + 'api?module=proxy&action=eth_blockNumber&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS')
     .then((result) => {
       return parseInt(result.data.result, 16)
     })
 }
 
 export const getTransactions = (type, address, startblock = 0, endblock = 'latest') => {
-  return axios.get('https://api.etherscan.io/api?module=account&action=txlist&address=' + address + '&startblock=' + startblock + '&endblock=' + endblock + '&sort=asc&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS')
+  return axios.get(API_ETHERSCAN + 'api?module=account&action=txlist&address=' + address + '&startblock=' + startblock + '&endblock=' + endblock + '&sort=asc&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS')
     .then((result) => {
       let last = startblock;
       const balances = {};

@@ -52,13 +52,15 @@ utils.db.open(utils.sqlite3_file, { Promise: _bluebird2.default }).then(function
       });
       return _bluebird2.default.all(promises);
     }).then(function (rows) {
+      var addrs = _lodash2.default.keys(addrContracts);
+      var types = _lodash2.default.values(addrContracts);
       var promises = [];
       _lodash2.default.forEach(rows, function (row, i) {
         var lastBlock = LASTBLOCK;
         if (row) {
           lastBlock = row.num;
         }
-        promises.push(utils.getTransactions(addrContracts[row.address], row.address, lastBlock));
+        promises.push(utils.getTransactions(types[i], addrs[i], lastBlock));
       });
       return _bluebird2.default.all(promises);
     }).then(function (transactions) {

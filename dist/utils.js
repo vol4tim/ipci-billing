@@ -40,6 +40,7 @@ var CHAINID = process.env.CHAINID || 1;
 var GAS_PRICE = process.env.GAS_PRICE || 20000000000;
 var GAS_LIMIT = process.env.GAS_LIMIT || 35000;
 var PARITY = process.env.PARITY || 'https://mainnet.infura.io/metamask';
+var API_ETHERSCAN = process.env.API_ETHERSCAN || 'https://api.etherscan.io/';
 
 var db = exports.db = require('sqlite');
 var sqlite3_file = exports.sqlite3_file = __dirname + '/data/db.sqlite3';
@@ -49,15 +50,15 @@ web3.setProvider(new web3.providers.HttpProvider(PARITY));
 
 var getContracts = exports.getContracts = function getContracts() {
   return new Promise(function (resolve) {
-    var addrContracts = [];
+    var addrContracts = {};
     // addrContracts.push('0x51b52d3a8eb9c2dad5b08ee66c2faa0ab38ad097')
     // addrContracts.push('0x259e4b009a1611f47231975bf9f5a585c70fe591')
     var contract = web3.eth.contract(_abi2.default.Core).at(CORE);
     var address = contract.first();
     while (address !== '0x0000000000000000000000000000000000000000') {
       var type = contract.abiOf(address);
-      if (type !== '' && type !== 'agents') {
-        addrContracts.push({ address: type });
+      if (type === 'tokenAcl' || type === 'token-acl') {
+        addrContracts[address] = type;
       }
       address = contract.next(address);
     }
@@ -66,7 +67,7 @@ var getContracts = exports.getContracts = function getContracts() {
 };
 
 var getBlock = exports.getBlock = function getBlock() {
-  return _axios2.default.get('https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS').then(function (result) {
+  return _axios2.default.get(API_ETHERSCAN + 'api?module=proxy&action=eth_blockNumber&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS').then(function (result) {
     return parseInt(result.data.result, 16);
   });
 };
@@ -75,7 +76,7 @@ var getTransactions = exports.getTransactions = function getTransactions(type, a
   var startblock = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
   var endblock = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : 'latest';
 
-  return _axios2.default.get('https://api.etherscan.io/api?module=account&action=txlist&address=' + address + '&startblock=' + startblock + '&endblock=' + endblock + '&sort=asc&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS').then(function (result) {
+  return _axios2.default.get(API_ETHERSCAN + 'api?module=account&action=txlist&address=' + address + '&startblock=' + startblock + '&endblock=' + endblock + '&sort=asc&apikey=M1KX26NG5RF9P7R27XETQEB31IPAYUPVMS').then(function (result) {
     var last = startblock;
     var balances = {};
     _lodash2.default.forEach(result.data.result, function (tx) {
